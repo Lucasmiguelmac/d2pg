@@ -7,9 +7,6 @@
   let zoomLevel = 1;
   let minZoom = 0.1;
   let maxZoom = 5;
-  let svgElement: SVGElement | null = null;
-  let baseWidth = 0;
-  let baseHeight = 0;
 
   async function saveAndCompile() { 
     try {
