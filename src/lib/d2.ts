@@ -1,11 +1,8 @@
-export type Layout = 'dagre' | 'elk';
-
 export async function compileToSvg(
-  src: string,
-  opts?: { layout?: Layout; sketch?: boolean }
+  src: string
 ): Promise<string> {
   try {
-    console.log('Starting compilation...', { src, opts });
+    console.log('Starting compilation...', { src });
     
     // Dynamic import to handle potential loading issues
     const { D2 } = await import('@terrastruct/d2');
@@ -18,7 +15,6 @@ export async function compileToSvg(
     console.log('Compilation complete, rendering...');
     
     const svg = await d2.render(compiled.diagram, {
-      sketch: !!opts?.sketch,
       center: true,
       pad: 32
     });

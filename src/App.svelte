@@ -1,20 +1,15 @@
 <script lang="ts">
-  import { compileToSvg, type Layout } from './lib/d2';
+  import { compileToSvg } from './lib/d2';
   let src = `x -> y`;
   let svg = '';
-  let layout: Layout = 'dagre';
-  let sketch = false;
   let collapsed = false;
   let editorWidth = 420;
 
   async function saveAndCompile() { 
-    console.log('=== COMPILE BUTTON CLICKED ===');
-    alert('Compile button clicked! Check console for details.');
     try {
       console.log('Starting compilation process...');
-      svg = await compileToSvg(src, { layout, sketch }); 
+      svg = await compileToSvg(src); 
       console.log('SVG updated successfully:', svg.length, 'characters');
-      alert('Compilation successful!');
     } catch (error) {
       console.error('Compilation failed:', error);
       alert('Compilation failed: ' + error.message);
@@ -40,20 +35,23 @@
 </script>
 
 <div class="root" on:keydown={handleKeydown} role="application" tabindex="-1">
-  <aside class:collapsed style={`width:${collapsed ? '12px' : editorWidth + 'px'}`}>
+  <aside class:collapsed style={`width:${collapsed ? '0px' : editorWidth + 'px'}`}>
     <div class="toolbar">
       <button on:click={toggleCollapse}>{collapsed ? '›' : '‹'}</button>
-      <label>Layout
-        <select bind:value={layout}>
-          <option value="dagre">dagre</option>
-          <option value="elk">elk</option>
-        </select>
-      </label>
-      <label><input type="checkbox" bind:checked={sketch}> Sketch</label>
-      <button on:click={saveAndCompile} title="Ctrl/Cmd+S">Compile</button>
+      {#if !collapsed}
+        <button on:click={saveAndCompile} title="Ctrl/Cmd+S">Compile</button>
+      {/if}
     </div>
-    <textarea bind:value={src} spellcheck="false"></textarea>
+    {#if !collapsed}
+      <textarea bind:value={src} spellcheck="false"></textarea>
+    {/if}
   </aside>
+
+  {#if collapsed}
+    <button class="floating-expand-btn" on:click={toggleCollapse} title="Expand Editor">
+      ›
+    </button>
+  {/if}
 
   <div class="splitter" on:pointerdown={startDrag} on:pointermove={onMove} on:pointerup={stopDrag}></div>
 
@@ -84,8 +82,36 @@
     overflow:hidden; 
     display: flex;
     flex-direction: column;
+    transition: width 0.3s ease;
   }
-  aside.collapsed { width:12px !important; }
+  aside.collapsed { 
+    width: 0px !important; 
+    min-width: 0 !important;
+    border-right: none;
+  }
+  .floating-expand-btn {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 1001;
+    background: #17181b;
+    color: #e7e7ea;
+    border: 1px solid #222329;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 18px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    transition: all 0.2s ease;
+  }
+  .floating-expand-btn:hover {
+    background: #222329;
+    transform: scale(1.05);
+  }
   .toolbar { 
     display:flex; 
     gap:.5rem; 
@@ -108,21 +134,25 @@
   }
   .splitter { cursor: col-resize; background:#e5e7eb0f; }
   .preview { 
-    overflow:auto; 
-    padding:16px; 
+    overflow: auto; 
+    padding: 16px; 
     background: #0b0b0c;
     position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100%;
   }
   .preview :global(svg) { 
-    display:block; 
-    margin:0 auto; 
-    max-width:100%; 
-    height:auto; 
+    display: block; 
+    width: 100%; 
+    max-height: calc(100vh - 32px);
+    height: auto; 
     background: white;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
   }
-  button, select, input[type="checkbox"] { 
+  button { 
     color:#e7e7ea; 
     background:#17181b; 
     border:1px solid #222329; 
@@ -130,5 +160,5 @@
     padding:6px 10px; 
     cursor: pointer;
   }
-  button:hover, select:hover { background:#222329; }
+  button:hover { background:#222329; }
 </style>
