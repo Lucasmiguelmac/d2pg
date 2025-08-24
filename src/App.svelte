@@ -4,6 +4,12 @@
   let svg = '';
   let collapsed = false;
   let editorWidth = 420;
+  let zoomLevel = 1;
+  let minZoom = 0.1;
+  let maxZoom = 5;
+  let svgElement: SVGElement | null = null;
+  let baseWidth = 0;
+  let baseHeight = 0;
 
   async function saveAndCompile() { 
     try {
@@ -20,6 +26,20 @@
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
       e.preventDefault(); saveAndCompile();
     }
+  }
+
+  function handleWheel(e: WheelEvent) {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      const newZoom = Math.min(Math.max(zoomLevel + delta, minZoom), maxZoom);
+      console.log('Zoom change:', zoomLevel, '->', newZoom);
+      zoomLevel = newZoom;
+    }
+  }
+
+  function resetZoomToFit() {
+    zoomLevel = 1;
   }
 
   // splitter drag (min 260px, max 80vw)
@@ -40,6 +60,8 @@
       <button on:click={toggleCollapse}>{collapsed ? '›' : '‹'}</button>
       {#if !collapsed}
         <button on:click={saveAndCompile} title="Ctrl/Cmd+S">Compile</button>
+        <button on:click={resetZoomToFit} title="Reset Zoom (Fit to View)">Reset Zoom</button>
+        <span class="zoom-indicator">{Math.round(zoomLevel * 100)}%</span>
       {/if}
     </div>
     {#if !collapsed}
@@ -55,8 +77,12 @@
 
   <div class="splitter" on:pointerdown={startDrag} on:pointermove={onMove} on:pointerup={stopDrag}></div>
 
-  <section class="preview">
-    {@html svg}
+  <section class="preview" on:wheel={handleWheel}>
+    <div class="svg-container">
+      <div style="width: {zoomLevel * 100}%; height: {zoomLevel * 100}%; display: flex; align-items: center; justify-content: center;">
+        {@html svg}
+      </div>
+    </div>
   </section>
 </div>
 
@@ -138,16 +164,16 @@
     padding: 16px; 
     background: #0b0b0c;
     position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     min-height: 100%;
+  }
+  .svg-container {
+    min-height: 100%;
+    min-width: 100%;
   }
   .preview :global(svg) { 
     display: block; 
-    width: 100%; 
-    max-height: calc(100vh - 32px);
-    height: auto; 
+    width: 100%;
+    height: auto;
     background: white;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
@@ -161,4 +187,14 @@
     cursor: pointer;
   }
   button:hover { background:#222329; }
+  .zoom-indicator {
+    color: #888;
+    font-size: 12px;
+    padding: 4px 8px;
+    background: #17181b;
+    border: 1px solid #222329;
+    border-radius: 6px;
+    min-width: 40px;
+    text-align: center;
+  }
 </style>
