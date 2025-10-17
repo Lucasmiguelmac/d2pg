@@ -1,8 +1,25 @@
 <script lang="ts">
-  let src = `x -> y`;
+  import { onMount } from 'svelte';
+  
+  const STORAGE_KEY = 'd2-playground-diagram';
+  const EDITOR_WIDTH_KEY = 'd2-playground-editor-width';
+  const COLLAPSED_KEY = 'd2-playground-collapsed';
+  
+  // Load diagram from localStorage or use default
+  let src = typeof localStorage !== 'undefined' 
+    ? localStorage.getItem(STORAGE_KEY) || `x -> y`
+    : `x -> y`;
+  
   let svg = "";
-  let collapsed = false;
-  let editorWidth = 420;
+  
+  // Load editor preferences
+  let collapsed = typeof localStorage !== 'undefined'
+    ? localStorage.getItem(COLLAPSED_KEY) === 'true'
+    : false;
+  
+  let editorWidth = typeof localStorage !== 'undefined'
+    ? parseInt(localStorage.getItem(EDITOR_WIDTH_KEY) || '420')
+    : 420;
   let zoomLevel = 1;
   let fitZoom = 1; // The zoom level that makes the SVG fit perfectly
   let minZoom = 1; // Dynamic minimum zoom (set to fitZoom)
@@ -11,6 +28,20 @@
   let svgContainer: HTMLElement;
   let svgNaturalWidth = 0;
   let svgNaturalHeight = 0;
+  
+  // Save diagram to localStorage whenever it changes
+  $: if (typeof localStorage !== 'undefined' && src !== undefined) {
+    localStorage.setItem(STORAGE_KEY, src);
+  }
+  
+  // Save editor preferences
+  $: if (typeof localStorage !== 'undefined' && editorWidth !== undefined) {
+    localStorage.setItem(EDITOR_WIDTH_KEY, editorWidth.toString());
+  }
+  
+  $: if (typeof localStorage !== 'undefined' && collapsed !== undefined) {
+    localStorage.setItem(COLLAPSED_KEY, collapsed.toString());
+  }
   
   async function compileToSvg(src: string): Promise<string> {
     try {
@@ -200,6 +231,11 @@
   if (typeof window !== 'undefined') {
     window.addEventListener('resize', handleResize);
   }
+
+  // Compile diagram on mount
+  onMount(() => {
+    saveAndCompile();
+  });
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
