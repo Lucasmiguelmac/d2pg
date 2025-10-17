@@ -11,6 +11,7 @@
     : `x -> y`;
   
   let svg = "";
+  let loading = false;
   
   // Load editor preferences
   let collapsed = typeof localStorage !== 'undefined'
@@ -72,6 +73,7 @@
 
   async function saveAndCompile() {
     try {
+      loading = true;
       console.log("Starting compilation process...");
       svg = await compileToSvg(src);
       console.log("SVG updated successfully:", svg.length, "characters");
@@ -81,6 +83,8 @@
     } catch (error) {
       console.error("Compilation failed:", error);
       alert("Compilation failed: " + error.message);
+    } finally {
+      loading = false;
     }
   }
 
@@ -287,6 +291,12 @@
     on:mouseleave={stopPan}
     bind:this={previewContainer}
   >
+    {#if loading}
+      <div class="loader">
+        <div class="spinner"></div>
+      </div>
+    {/if}
+    
     <div class="svg-container" bind:this={svgContainer}>
       <div
         class="svg-wrapper"
@@ -424,5 +434,30 @@
     border-radius: 6px;
     min-width: 40px;
     text-align: center;
+  }
+  .loader {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    pointer-events: none;
+  }
+  .spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid rgba(100, 108, 255, 0.2);
+    border-top-color: #646cff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 </style>
