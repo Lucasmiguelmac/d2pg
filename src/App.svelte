@@ -200,7 +200,7 @@
     on:pointerup={stopDrag}
   ></div>
 
-  <section class="preview" on:wheel={handleWheel} bind:this={previewContainer}>
+  <section class="preview" style="background-color: white;" on:wheel={handleWheel} bind:this={previewContainer}>
     <div class="svg-container" bind:this={svgContainer}>
       <div
         class="svg-wrapper"
@@ -321,7 +321,7 @@
     height: 100%;
     background: white;
     border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+
   }
   button {
     color: #e7e7ea;
