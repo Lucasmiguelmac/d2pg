@@ -140,6 +140,46 @@
     }
   }
 
+  // Pan/drag to scroll
+  let isPanning = false;
+  let panStartX = 0;
+  let panStartY = 0;
+  let scrollStartX = 0;
+  let scrollStartY = 0;
+
+  function startPan(e: MouseEvent) {
+    // Only start panning with left mouse button and not on text selection
+    if (e.button !== 0) return;
+    
+    isPanning = true;
+    panStartX = e.clientX;
+    panStartY = e.clientY;
+    scrollStartX = previewContainer.scrollLeft;
+    scrollStartY = previewContainer.scrollTop;
+    
+    // Change cursor to grabbing
+    if (previewContainer) {
+      previewContainer.style.cursor = 'grabbing';
+    }
+  }
+
+  function onPan(e: MouseEvent) {
+    if (!isPanning || !previewContainer) return;
+
+    const deltaX = e.clientX - panStartX;
+    const deltaY = e.clientY - panStartY;
+
+    previewContainer.scrollLeft = scrollStartX - deltaX;
+    previewContainer.scrollTop = scrollStartY - deltaY;
+  }
+
+  function stopPan() {
+    isPanning = false;
+    if (previewContainer) {
+      previewContainer.style.cursor = 'grab';
+    }
+  }
+
   function toggleCollapse() {
     if (!collapsed)
       editorWidth = (document.querySelector("aside") as HTMLElement)
@@ -200,7 +240,17 @@
     on:pointerup={stopDrag}
   ></div>
 
-  <section class="preview" style="background-color: white;" on:wheel={handleWheel} bind:this={previewContainer}>
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <section 
+    class="preview" 
+    style="background-color: white;" 
+    on:wheel={handleWheel} 
+    on:mousedown={startPan}
+    on:mousemove={onPan}
+    on:mouseup={stopPan}
+    on:mouseleave={stopPan}
+    bind:this={previewContainer}
+  >
     <div class="svg-container" bind:this={svgContainer}>
       <div
         class="svg-wrapper"
@@ -297,23 +347,18 @@
     padding: 16px;
     background: #0b0b0c;
     position: relative;
-    min-height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    height: 100%;
+    cursor: grab;
+    user-select: none;
   }
   .svg-container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
     min-height: 100%;
     min-width: 100%;
+    display: grid;
+    place-items: center;
   }
   .svg-wrapper {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
+    display: block;
   }
   .preview :global(svg) {
     display: block;
