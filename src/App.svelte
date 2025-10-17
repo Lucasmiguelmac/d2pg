@@ -4,8 +4,13 @@
   let collapsed = false;
   let editorWidth = 420;
   let zoomLevel = 1;
-  let minZoom = 0.1;
+  let fitZoom = 1; // The zoom level that makes the SVG fit perfectly
+  let minZoom = 1; // Dynamic minimum zoom (set to fitZoom)
   let maxZoom = 5;
+  let previewContainer: HTMLElement;
+  let svgContainer: HTMLElement;
+  let svgNaturalWidth = 0;
+  let svgNaturalHeight = 0;
   
   async function compileToSvg(src: string): Promise<string> {
     try {
@@ -39,10 +44,53 @@
       console.log("Starting compilation process...");
       svg = await compileToSvg(src);
       console.log("SVG updated successfully:", svg.length, "characters");
+      
+      // Wait for DOM to update, then calculate fit zoom
+      setTimeout(calculateFitZoom, 50);
     } catch (error) {
       console.error("Compilation failed:", error);
       alert("Compilation failed: " + error.message);
     }
+  }
+
+  function calculateFitZoom() {
+    if (!previewContainer || !svgContainer) return;
+    
+    const svgElement = svgContainer.querySelector("svg");
+    if (!svgElement) return;
+
+    // Get natural SVG dimensions
+    const svgWidth = svgElement.viewBox?.baseVal?.width || svgElement.width.baseVal.value;
+    const svgHeight = svgElement.viewBox?.baseVal?.height || svgElement.height.baseVal.value;
+    
+    // Store natural dimensions
+    svgNaturalWidth = svgWidth;
+    svgNaturalHeight = svgHeight;
+    
+    // Get container dimensions (minus padding)
+    const containerWidth = previewContainer.clientWidth - 32;
+    const containerHeight = previewContainer.clientHeight - 32;
+    
+    if (!svgWidth || !svgHeight || !containerWidth || !containerHeight) return;
+
+    // Calculate scale factors for both dimensions
+    const scaleX = containerWidth / svgWidth;
+    const scaleY = containerHeight / svgHeight;
+    
+    // Use the smaller scale to ensure it fits (like object-fit: contain)
+    const newFitZoom = Math.min(scaleX, scaleY);
+    
+    fitZoom = newFitZoom;
+    minZoom = newFitZoom;
+    zoomLevel = newFitZoom;
+    
+    console.log("Fit zoom calculated:", {
+      svgWidth,
+      svgHeight,
+      containerWidth,
+      containerHeight,
+      fitZoom: newFitZoom
+    });
   }
 
   function handleKeydown(e: KeyboardEvent) {
@@ -63,7 +111,7 @@
   }
 
   function resetZoomToFit() {
-    zoomLevel = 1;
+    zoomLevel = fitZoom;
   }
 
   // splitter drag (min 260px, max 80vw)
@@ -86,6 +134,10 @@
   }
   function stopDrag() {
     dragging = false;
+    // Recalculate fit after resizing the editor panel
+    if (svg) {
+      setTimeout(calculateFitZoom, 50);
+    }
   }
 
   function toggleCollapse() {
@@ -93,9 +145,24 @@
       editorWidth = (document.querySelector("aside") as HTMLElement)
         .offsetWidth;
     collapsed = !collapsed;
+    // Recalculate fit when collapsing/expanding
+    setTimeout(calculateFitZoom, 350);
+  }
+
+  // Recalculate fit zoom on window resize
+  function handleResize() {
+    if (svg) {
+      calculateFitZoom();
+    }
+  }
+
+  // Add resize listener
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', handleResize);
   }
 </script>
 
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div class="root" on:keydown={handleKeydown} role="application" tabindex="-1">
   <aside
     class:collapsed
@@ -133,11 +200,11 @@
     on:pointerup={stopDrag}
   ></div>
 
-  <section class="preview" on:wheel={handleWheel}>
-    <div class="svg-container">
+  <section class="preview" on:wheel={handleWheel} bind:this={previewContainer}>
+    <div class="svg-container" bind:this={svgContainer}>
       <div
-        style="width: {zoomLevel * 100}%; height: {zoomLevel *
-          100}%; display: flex; align-items: center; justify-content: center;"
+        class="svg-wrapper"
+        style="width: {svgNaturalWidth * zoomLevel}px; height: {svgNaturalHeight * zoomLevel}px;"
       >
         {@html svg}
       </div>
@@ -231,15 +298,27 @@
     background: #0b0b0c;
     position: relative;
     min-height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .svg-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     min-height: 100%;
     min-width: 100%;
+  }
+  .svg-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
   }
   .preview :global(svg) {
     display: block;
     width: 100%;
-    height: auto;
+    height: 100%;
     background: white;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
