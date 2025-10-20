@@ -174,6 +174,39 @@
     }
   }
   
+  // Format D2 code - fix indentation
+  function formatCode() {
+    const lines = src.split('\n');
+    const formatted: string[] = [];
+    let indentLevel = 0;
+    const indentSize = 2; // 2 spaces per indent
+    
+    for (let line of lines) {
+      const trimmed = line.trim();
+      
+      // Skip empty lines
+      if (!trimmed) {
+        formatted.push('');
+        continue;
+      }
+      
+      // Check if line closes a block
+      if (trimmed === '}') {
+        indentLevel = Math.max(0, indentLevel - 1);
+      }
+      
+      // Add line with current indentation
+      formatted.push(' '.repeat(indentLevel * indentSize) + trimmed);
+      
+      // Check if line opens a block
+      if (trimmed.endsWith('{') || trimmed.endsWith(': {')) {
+        indentLevel++;
+      }
+    }
+    
+    updateProjectSrc(formatted.join('\n'));
+  }
+  
   // Save editor preferences
   $: if (typeof localStorage !== 'undefined' && editorWidth !== undefined) {
     localStorage.setItem(EDITOR_WIDTH_KEY, editorWidth.toString());
@@ -209,6 +242,8 @@
   async function saveAndCompile() {
     try {
       loading = true;
+      // Auto-format before compiling
+      formatCode();
       console.log("Starting compilation process...");
       const compiled = await compileToSvg(src);
       
@@ -460,7 +495,7 @@
     <div class="toolbar">
       <button on:click={toggleCollapse}>{collapsed ? "›" : "‹"}</button>
       {#if !collapsed}
-        <button on:click={saveAndCompile} title="Ctrl/Cmd+S">Compile</button>
+        <button on:click={saveAndCompile} title="Ctrl/Cmd+S (auto-formats)">Compile</button>
         <button on:click={resetZoomToFit} title="Reset Zoom (Fit to View)"
           >Reset Zoom</button
         >
