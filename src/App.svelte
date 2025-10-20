@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { D2 } from '@terrastruct/d2';
   
   const STORAGE_KEY = 'd2-playground-diagram';
   const EDITOR_WIDTH_KEY = 'd2-playground-editor-width';
@@ -47,10 +48,6 @@
   async function compileToSvg(src: string): Promise<string> {
     try {
       console.log("Starting compilation...", { src });
-
-      // Dynamic import to handle potential loading issues
-      const { D2 } = await import("@terrastruct/d2");
-      console.log("D2 module imported successfully");
 
       const d2 = new D2();
       console.log("D2 instance created, compiling...");
