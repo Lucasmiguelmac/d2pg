@@ -12,6 +12,9 @@
     name: string;
     src: string;
     svg: string;
+    zoomLevel?: number;
+    fitZoom?: number;
+    minZoom?: number;
   }
   
   // Load projects from localStorage or create default
@@ -24,9 +27,20 @@
       id: crypto.randomUUID(),
       name: 'Diagram 1',
       src: 'x -> y',
-      svg: ''
+      svg: '',
+      zoomLevel: 1,
+      fitZoom: 1,
+      minZoom: 1
     }];
   }
+  
+  // Ensure existing projects have zoom properties
+  projects = projects.map(p => ({
+    ...p,
+    zoomLevel: p.zoomLevel ?? 1,
+    fitZoom: p.fitZoom ?? 1,
+    minZoom: p.minZoom ?? 1
+  }));
   
   let currentProjectId = typeof localStorage !== 'undefined'
     ? localStorage.getItem(CURRENT_PROJECT_KEY) || projects[0].id
@@ -56,9 +70,9 @@
   let editorWidth = typeof localStorage !== 'undefined'
     ? parseInt(localStorage.getItem(EDITOR_WIDTH_KEY) || '420')
     : 420;
-  let zoomLevel = 1;
-  let fitZoom = 1; // The zoom level that makes the SVG fit perfectly
-  let minZoom = 1; // Dynamic minimum zoom (set to fitZoom)
+  let zoomLevel = projects.find(p => p.id === currentProjectId)?.zoomLevel ?? 1;
+  let fitZoom = projects.find(p => p.id === currentProjectId)?.fitZoom ?? 1;
+  let minZoom = projects.find(p => p.id === currentProjectId)?.minZoom ?? 1;
   let maxZoom = 5;
   let previewContainer: HTMLElement;
   let svgContainer: HTMLElement;
@@ -75,12 +89,26 @@
     localStorage.setItem(CURRENT_PROJECT_KEY, currentProjectId);
   }
   
-  // Update src and svg when switching projects
+  // Update src, svg, and zoom when switching projects
   $: {
     const project = projects.find(p => p.id === currentProjectId);
     if (project) {
       src = project.src;
       svg = project.svg;
+      zoomLevel = project.zoomLevel ?? 1;
+      fitZoom = project.fitZoom ?? 1;
+      minZoom = project.minZoom ?? 1;
+    }
+  }
+  
+  // Helper function to save zoom values to current project
+  function saveZoomToProject() {
+    const idx = projects.findIndex(p => p.id === currentProjectId);
+    if (idx !== -1) {
+      projects[idx].zoomLevel = zoomLevel;
+      projects[idx].fitZoom = fitZoom;
+      projects[idx].minZoom = minZoom;
+      projects = [...projects];
     }
   }
   
@@ -156,7 +184,10 @@
       id: crypto.randomUUID(),
       name: `Diagram ${projects.length + 1}`,
       src: 'x -> y',
-      svg: ''
+      svg: '',
+      zoomLevel: 1,
+      fitZoom: 1,
+      minZoom: 1
     };
     projects = [...projects, newProject];
     currentProjectId = newProject.id;
@@ -164,8 +195,7 @@
   
   function switchProject(projectId: string) {
     currentProjectId = projectId;
-    // Recalculate zoom for the new diagram
-    setTimeout(calculateFitZoom, 50);
+    // Zoom values will be restored by the reactive statement
   }
   
   function deleteProject(projectId: string) {
@@ -238,6 +268,7 @@
     fitZoom = newFitZoom;
     minZoom = newFitZoom;
     zoomLevel = newFitZoom;
+    saveZoomToProject();
     
     console.log("Fit zoom calculated:", {
       svgWidth,
@@ -262,11 +293,13 @@
       const newZoom = Math.min(Math.max(zoomLevel + delta, minZoom), maxZoom);
       console.log("Zoom change:", zoomLevel, "->", newZoom);
       zoomLevel = newZoom;
+      saveZoomToProject();
     }
   }
 
   function resetZoomToFit() {
     zoomLevel = fitZoom;
+    saveZoomToProject();
   }
 
   // splitter drag (min 260px, max 80vw)
