@@ -2,17 +2,51 @@
   import { onMount } from 'svelte';
   import { D2 } from '@terrastruct/d2';
   
-  const STORAGE_KEY = 'd2-playground-diagram';
+  const PROJECTS_KEY = 'd2-playground-projects';
+  const CURRENT_PROJECT_KEY = 'd2-playground-current';
   const EDITOR_WIDTH_KEY = 'd2-playground-editor-width';
   const COLLAPSED_KEY = 'd2-playground-collapsed';
   
-  // Load diagram from localStorage or use default
-  let src = typeof localStorage !== 'undefined' 
-    ? localStorage.getItem(STORAGE_KEY) || `x -> y`
-    : `x -> y`;
+  interface Project {
+    id: string;
+    name: string;
+    src: string;
+    svg: string;
+  }
   
-  let svg = "";
+  // Load projects from localStorage or create default
+  let projects: Project[] = typeof localStorage !== 'undefined'
+    ? JSON.parse(localStorage.getItem(PROJECTS_KEY) || '[]')
+    : [];
+  
+  if (projects.length === 0) {
+    projects = [{
+      id: crypto.randomUUID(),
+      name: 'Diagram 1',
+      src: 'x -> y',
+      svg: ''
+    }];
+  }
+  
+  let currentProjectId = typeof localStorage !== 'undefined'
+    ? localStorage.getItem(CURRENT_PROJECT_KEY) || projects[0].id
+    : projects[0].id;
+  
+  // Ensure currentProjectId is valid
+  if (!projects.find(p => p.id === currentProjectId)) {
+    currentProjectId = projects[0].id;
+  }
+  
+  function getCurrentProject() {
+    return projects.find(p => p.id === currentProjectId)!;
+  }
+  
+  $: currentProject = getCurrentProject();
+  let src = projects.find(p => p.id === currentProjectId)?.src || '';
+  let svg = '';
+  
   let loading = false;
+  let editingProjectId: string | null = null;
   
   // Load editor preferences
   let collapsed = typeof localStorage !== 'undefined'
@@ -31,9 +65,33 @@
   let svgNaturalWidth = 0;
   let svgNaturalHeight = 0;
   
-  // Save diagram to localStorage whenever it changes
-  $: if (typeof localStorage !== 'undefined' && src !== undefined) {
-    localStorage.setItem(STORAGE_KEY, src);
+  // Save projects to localStorage whenever they change
+  $: if (typeof localStorage !== 'undefined' && projects) {
+    localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+  }
+  
+  // Save current project ID
+  $: if (typeof localStorage !== 'undefined' && currentProjectId) {
+    localStorage.setItem(CURRENT_PROJECT_KEY, currentProjectId);
+  }
+  
+  // Update src and svg when switching projects
+  $: {
+    const project = projects.find(p => p.id === currentProjectId);
+    if (project) {
+      src = project.src;
+      svg = project.svg;
+    }
+  }
+  
+  // Update current project's src when textarea changes
+  function updateProjectSrc(newSrc: string) {
+    src = newSrc;
+    const idx = projects.findIndex(p => p.id === currentProjectId);
+    if (idx !== -1) {
+      projects[idx].src = newSrc;
+      projects = [...projects];
+    }
   }
   
   // Save editor preferences
@@ -72,8 +130,16 @@
     try {
       loading = true;
       console.log("Starting compilation process...");
-      svg = await compileToSvg(src);
-      console.log("SVG updated successfully:", svg.length, "characters");
+      const compiled = await compileToSvg(src);
+      
+      // Update the SVG in the current project
+      const idx = projects.findIndex(p => p.id === currentProjectId);
+      if (idx !== -1) {
+        projects[idx].svg = compiled;
+        projects = [...projects];
+      }
+      
+      console.log("SVG updated successfully:", compiled.length, "characters");
       
       // Wait for DOM to update, then calculate fit zoom
       setTimeout(calculateFitZoom, 50);
@@ -82,6 +148,63 @@
       alert("Compilation failed: " + error.message);
     } finally {
       loading = false;
+    }
+  }
+  
+  function addProject() {
+    const newProject: Project = {
+      id: crypto.randomUUID(),
+      name: `Diagram ${projects.length + 1}`,
+      src: 'x -> y',
+      svg: ''
+    };
+    projects = [...projects, newProject];
+    currentProjectId = newProject.id;
+  }
+  
+  function switchProject(projectId: string) {
+    currentProjectId = projectId;
+    // Recalculate zoom for the new diagram
+    setTimeout(calculateFitZoom, 50);
+  }
+  
+  function deleteProject(projectId: string) {
+    if (projects.length === 1) {
+      alert("Cannot delete the last project");
+      return;
+    }
+    
+    const idx = projects.findIndex(p => p.id === projectId);
+    if (idx === -1) return;
+    
+    projects = projects.filter(p => p.id !== projectId);
+    
+    // Switch to another project if we deleted the current one
+    if (currentProjectId === projectId) {
+      currentProjectId = projects[Math.max(0, idx - 1)].id;
+    }
+  }
+  
+  function startRename(projectId: string) {
+    editingProjectId = projectId;
+  }
+  
+  function finishRename(projectId: string, newName: string) {
+    const idx = projects.findIndex(p => p.id === projectId);
+    if (idx !== -1 && newName.trim()) {
+      projects[idx].name = newName.trim();
+      projects = [...projects];
+    }
+    editingProjectId = null;
+  }
+  
+  function handleTabKeydown(e: KeyboardEvent, projectId: string) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const input = e.target as HTMLInputElement;
+      finishRename(projectId, input.value);
+    } else if (e.key === 'Escape') {
+      editingProjectId = null;
     }
   }
 
@@ -256,7 +379,48 @@
       {/if}
     </div>
     {#if !collapsed}
-      <textarea bind:value={src} spellcheck="false"></textarea>
+      <textarea value={src} on:input={(e) => updateProjectSrc(e.currentTarget.value)} spellcheck="false"></textarea>
+      
+      <div class="tabs-container">
+        <div class="tabs">
+          {#each projects as project (project.id)}
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div 
+              class="tab"
+              class:active={project.id === currentProjectId}
+              on:click={() => switchProject(project.id)}
+              on:dblclick={() => startRename(project.id)}
+              role="tab"
+              tabindex="0"
+            >
+              {#if editingProjectId === project.id}
+                <!-- svelte-ignore a11y_autofocus -->
+                <input
+                  type="text"
+                  value={project.name}
+                  on:blur={(e) => finishRename(project.id, e.currentTarget.value)}
+                  on:keydown={(e) => handleTabKeydown(e, project.id)}
+                  autofocus
+                  class="tab-input"
+                />
+              {:else}
+                <span class="tab-name">{project.name}</span>
+                {#if projects.length > 1}
+                  <button 
+                    class="tab-close"
+                    on:click|stopPropagation={() => deleteProject(project.id)}
+                    title="Delete project"
+                  >
+                    ×
+                  </button>
+                {/if}
+              {/if}
+            </div>
+          {/each}
+          <button class="tab-add" on:click={addProject} title="New project">+</button>
+        </div>
+      </div>
     {/if}
   </aside>
 
@@ -332,6 +496,7 @@
     display: flex;
     flex-direction: column;
     transition: width 0.3s ease;
+    position: relative;
   }
   aside.collapsed {
     width: 0px !important;
@@ -373,13 +538,103 @@
     width: 100%;
     flex: 1;
     min-height: 200px;
-    resize: vertical;
+    resize: none;
     padding: 0.75rem;
     border: 0;
     outline: none;
     background: #17181b;
     color: #e7e7ea;
     font-family: ui-monospace, Menlo, monospace;
+  }
+  .tabs-container {
+    background: #0d0d0f;
+    border-top: 1px solid #222329;
+    padding: 0.5rem;
+    flex-shrink: 0;
+  }
+  .tabs {
+    display: flex;
+    gap: 0.25rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    align-items: center;
+  }
+  .tabs::-webkit-scrollbar {
+    height: 4px;
+  }
+  .tabs::-webkit-scrollbar-thumb {
+    background: #222329;
+    border-radius: 2px;
+  }
+  .tab {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.4rem 0.6rem;
+    background: #17181b;
+    border: 1px solid #222329;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+    user-select: none;
+  }
+  .tab:hover {
+    background: #1d1e21;
+    border-color: #2a2b31;
+  }
+  .tab.active {
+    background: white;
+    border-color: white;
+    color: #0b0b0c;
+  }
+  .tab-name {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .tab-input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: inherit;
+    font-size: inherit;
+    font-family: inherit;
+    padding: 0;
+    width: 100px;
+  }
+  .tab-close {
+    padding: 0;
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    opacity: 0.7;
+    transition: all 0.15s ease;
+  }
+  .tab-close:hover {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.3);
+  }
+  .tab.active .tab-close:hover {
+    background: rgba(0, 0, 0, 0.15);
+  }
+  .tab-add {
+    padding: 0.4rem 0.6rem;
+    min-width: 28px;
+    height: 28px;
+    font-size: 16px;
+    line-height: 1;
+    flex-shrink: 0;
   }
   .splitter {
     cursor: col-resize;
