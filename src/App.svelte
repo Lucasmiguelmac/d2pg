@@ -15,6 +15,8 @@
     zoomLevel?: number;
     fitZoom?: number;
     minZoom?: number;
+    scrollLeft?: number;
+    scrollTop?: number;
   }
   
   // Load projects from localStorage or create default
@@ -30,16 +32,20 @@
       svg: '',
       zoomLevel: 1,
       fitZoom: 1,
-      minZoom: 1
+      minZoom: 1,
+      scrollLeft: 0,
+      scrollTop: 0
     }];
   }
   
-  // Ensure existing projects have zoom properties
+  // Ensure existing projects have zoom and scroll properties
   projects = projects.map(p => ({
     ...p,
     zoomLevel: p.zoomLevel ?? 1,
     fitZoom: p.fitZoom ?? 1,
-    minZoom: p.minZoom ?? 1
+    minZoom: p.minZoom ?? 1,
+    scrollLeft: p.scrollLeft ?? 0,
+    scrollTop: p.scrollTop ?? 0
   }));
   
   let currentProjectId = typeof localStorage !== 'undefined'
@@ -50,6 +56,9 @@
   if (!projects.find(p => p.id === currentProjectId)) {
     currentProjectId = projects[0].id;
   }
+  
+  let previousProjectId = currentProjectId;
+  let shouldRestoreScroll = false;
   
   function getCurrentProject() {
     return projects.find(p => p.id === currentProjectId)!;
@@ -89,15 +98,33 @@
     localStorage.setItem(CURRENT_PROJECT_KEY, currentProjectId);
   }
   
-  // Update src, svg, and zoom when switching projects
+  // Update src, svg, zoom, and scroll when switching projects
   $: {
     const project = projects.find(p => p.id === currentProjectId);
     if (project) {
+      // Check if we actually switched projects
+      const didSwitchProject = currentProjectId !== previousProjectId;
+      if (didSwitchProject) {
+        previousProjectId = currentProjectId;
+        shouldRestoreScroll = true;
+      }
+      
       src = project.src;
       svg = project.svg;
       zoomLevel = project.zoomLevel ?? 1;
       fitZoom = project.fitZoom ?? 1;
       minZoom = project.minZoom ?? 1;
+      
+      // Only restore scroll position when actually switching projects
+      if (shouldRestoreScroll) {
+        setTimeout(() => {
+          if (previewContainer) {
+            previewContainer.scrollLeft = project.scrollLeft ?? 0;
+            previewContainer.scrollTop = project.scrollTop ?? 0;
+            shouldRestoreScroll = false;
+          }
+        }, 10);
+      }
     }
   }
   
@@ -110,6 +137,31 @@
       projects[idx].minZoom = minZoom;
       projects = [...projects];
     }
+  }
+  
+  // Helper function to save scroll position to current project
+  let scrollSaveTimeout: number;
+  function saveScrollToProject() {
+    if (!previewContainer) return;
+    const idx = projects.findIndex(p => p.id === currentProjectId);
+    if (idx !== -1) {
+      // Save without triggering array update if values haven't changed
+      const scrollLeft = previewContainer.scrollLeft;
+      const scrollTop = previewContainer.scrollTop;
+      
+      if (projects[idx].scrollLeft !== scrollLeft || projects[idx].scrollTop !== scrollTop) {
+        projects[idx].scrollLeft = scrollLeft;
+        projects[idx].scrollTop = scrollTop;
+        // Force update for localStorage save
+        projects = [...projects];
+      }
+    }
+  }
+  
+  // Debounced scroll save for scroll events
+  function handleScroll() {
+    if (scrollSaveTimeout) clearTimeout(scrollSaveTimeout);
+    scrollSaveTimeout = setTimeout(saveScrollToProject, 300);
   }
   
   // Update current project's src when textarea changes
@@ -187,7 +239,9 @@
       svg: '',
       zoomLevel: 1,
       fitZoom: 1,
-      minZoom: 1
+      minZoom: 1,
+      scrollLeft: 0,
+      scrollTop: 0
     };
     projects = [...projects, newProject];
     currentProjectId = newProject.id;
@@ -366,6 +420,8 @@
     if (previewContainer) {
       previewContainer.style.cursor = 'grab';
     }
+    // Save scroll position when panning stops
+    saveScrollToProject();
   }
 
   function toggleCollapse() {
@@ -479,6 +535,7 @@
     class="preview" 
     style="background-color: white;" 
     on:wheel={handleWheel} 
+    on:scroll={handleScroll}
     on:mousedown={startPan}
     on:mousemove={onPan}
     on:mouseup={stopPan}
