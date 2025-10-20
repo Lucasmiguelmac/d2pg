@@ -1,47 +1,179 @@
-# Svelte + Vite
+# D2 Playground
 
-This template should help get you started developing with Svelte in Vite.
+An **unofficial** interactive web playground for creating diagrams with [D2](https://d2lang.com/) - a modern diagram scripting language.
 
-## Recommended IDE Setup
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-[VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode).
+## What is D2?
 
-## Need an official Svelte framework?
+**D2** (Declarative Diagramming) is a text-based diagram scripting language that turns simple code into beautiful diagrams. Instead of dragging boxes and arrows in a visual editor, you write expressive code like:
 
-Check out [SvelteKit](https://github.com/sveltejs/kit#readme), which is also powered by Vite. Deploy anywhere with its serverless-first approach and adapt to various platforms, with out of the box support for TypeScript, SCSS, and Less, and easily-added support for mdsvex, GraphQL, PostCSS, Tailwind CSS, and more.
+```d2
+# Create a simple diagram
+x -> y: Hello
+y -> z: World
 
-## Technical considerations
-
-**Why use this over SvelteKit?**
-
-- It brings its own routing solution which might not be preferable for some users.
-- It is first and foremost a framework that just happens to use Vite under the hood, not a Vite app.
-
-This template contains as little as possible to get started with Vite + Svelte, while taking into account the developer experience with regards to HMR and intellisense. It demonstrates capabilities on par with the other `create-vite` templates and is a good starting point for beginners dipping their toes into a Vite + Svelte project.
-
-Should you later need the extended capabilities and extensibility provided by SvelteKit, the template has been structured similarly to SvelteKit so that it is easy to migrate.
-
-**Why `global.d.ts` instead of `compilerOptions.types` inside `jsconfig.json` or `tsconfig.json`?**
-
-Setting `compilerOptions.types` shuts out all other types not explicitly listed in the configuration. Using triple-slash references keeps the default TypeScript setting of accepting type information from the entire workspace, while also adding `svelte` and `vite/client` type information.
-
-**Why include `.vscode/extensions.json`?**
-
-Other templates indirectly recommend extensions via the README, but this file allows VS Code to prompt the user to install the recommended extension upon opening the project.
-
-**Why enable `checkJs` in the JS template?**
-
-It is likely that most cases of changing variable types in runtime are likely to be accidental, rather than deliberate. This provides advanced typechecking out of the box. Should you like to take advantage of the dynamically-typed nature of JavaScript, it is trivial to change the configuration.
-
-**Why is HMR not preserving my local component state?**
-
-HMR state preservation comes with a number of gotchas! It has been disabled by default in both `svelte-hmr` and `@sveltejs/vite-plugin-svelte` due to its often surprising behavior. You can read the details [here](https://github.com/sveltejs/svelte-hmr/tree/master/packages/svelte-hmr#preservation-of-local-state).
-
-If you have state that's important to retain within a component, consider creating an external store which would not be replaced by HMR.
-
-```js
-// store.js
-// An extremely simple external store
-import { writable } from 'svelte/store'
-export default writable(0)
+# Shape configurations
+x.shape: circle
+z.style.fill: "#d4a5a5"
 ```
+
+And D2 renders it into polished, professional diagrams. Perfect for architecture diagrams, flowcharts, network topologies, and system designs.
+
+## Features
+
+✨ **Live Preview** - See your diagrams update in real-time as you type  
+🎨 **Interactive Canvas** - Zoom, pan, and explore your diagrams  
+💾 **Auto-save** - Your work is automatically saved to browser localStorage  
+⌨️ **Keyboard Shortcuts** - Fast workflow with `Ctrl/Cmd+S` to compile  
+📏 **Resizable Panels** - Adjust editor width to your preference  
+🎯 **Collapsible Sidebar** - Maximize diagram viewing space  
+🔄 **Smart Zoom** - Ctrl+scroll to zoom, automatic fit-to-view  
+🌙 **Dark Theme** - Easy on the eyes for long coding sessions
+
+## Quick Start
+
+### Try It Online
+
+Just visit the playground and start typing D2 code! Your diagrams are automatically saved in your browser.
+
+### Run Locally
+
+```bash
+# Clone the repository
+git clone https://github.com/Lucasmiguelmac/d2pg.git
+cd d2pg
+
+# Install dependencies
+npm install
+# or
+bun install
+
+# Start development server
+npm run dev
+# or
+bun run dev
+```
+
+Open [http://localhost:5173](http://localhost:5173) in your browser.
+
+## Usage
+
+### Basic Example
+
+Type this in the editor:
+
+```d2
+# Simple flow
+Users -> API: Request
+API -> Database: Query
+Database -> API: Results
+API -> Users: Response
+
+# Style it
+API.shape: hexagon
+Database.shape: cylinder
+```
+
+Press `Ctrl+S` (or `Cmd+S` on Mac) to compile and see your diagram!
+
+### Interactive Controls
+
+- **Compile**: `Ctrl/Cmd+S` or click "Compile" button
+- **Zoom**: Hold `Ctrl/Cmd` and scroll
+- **Pan**: Click and drag the canvas
+- **Reset Zoom**: Click "Reset Zoom" button
+- **Toggle Editor**: Click `‹` / `›` buttons
+
+### Advanced Examples
+
+**Architecture Diagram:**
+```d2
+cloud: Cloud Infrastructure {
+  lb: Load Balancer
+  app: Application Servers {
+    web1: Web Server 1
+    web2: Web Server 2
+  }
+  db: Database {
+    primary: Primary DB
+    replica: Replica DB
+  }
+}
+
+cloud.lb -> cloud.app.web1
+cloud.lb -> cloud.app.web2
+cloud.app.web1 -> cloud.db.primary
+cloud.app.web2 -> cloud.db.primary
+cloud.db.primary -> cloud.db.replica: sync
+```
+
+**Network Topology:**
+```d2
+internet: Internet
+router: Router
+switch: Switch
+devices: {
+  pc1: Computer 1
+  pc2: Computer 2
+  printer: Printer
+}
+
+internet -> router
+router -> switch
+switch -> devices.pc1
+switch -> devices.pc2
+switch -> devices.printer
+
+router.shape: diamond
+switch.shape: rectangle
+```
+
+## Development
+
+### Build for Production
+
+```bash
+npm run build
+# or
+bun run build
+```
+
+### Tech Stack
+
+- **[Svelte](https://svelte.dev/)** - Reactive UI framework
+- **[Vite](https://vitejs.dev/)** - Lightning-fast build tool
+- **[@terrastruct/d2](https://www.npmjs.com/package/@terrastruct/d2)** - Official D2 compiler
+- **[TailwindCSS](https://tailwindcss.com/)** - Utility-first CSS
+
+## Contributing
+
+Contributions are welcome! Feel free to:
+
+- Report bugs
+- Suggest features
+- Submit pull requests
+- Improve documentation
+
+## Automatic Updates
+
+This project uses Dependabot to automatically update the D2 compiler to the latest version, ensuring you always have access to the newest D2 features.
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## Disclaimer
+
+This is an **unofficial** playground and is not affiliated with, endorsed by, or connected to [Terrastruct](https://terrastruct.com/) or the official D2 project.
+
+For the official D2 documentation and resources, visit:
+- 🌐 [D2 Official Website](https://d2lang.com/)
+- 📚 [D2 Documentation](https://d2lang.com/tour/intro)
+- 💻 [D2 GitHub Repository](https://github.com/terrastruct/d2)
+
+## Acknowledgments
+
+Built with ❤️ using the official [@terrastruct/d2](https://www.npmjs.com/package/@terrastruct/d2) compiler.
+
+Special thanks to the Terrastruct team for creating D2!
