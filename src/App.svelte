@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { D2 } from '@terrastruct/d2';
+  import CodeEditor from './CodeEditor.svelte';
   
   const PROJECTS_KEY = 'd2-playground-projects';
   const CURRENT_PROJECT_KEY = 'd2-playground-current';
@@ -503,7 +504,9 @@
       {/if}
     </div>
     {#if !collapsed}
-      <textarea value={src} on:input={(e) => updateProjectSrc(e.currentTarget.value)} spellcheck="false"></textarea>
+      <div class="editor-container">
+        <CodeEditor value={src} onChange={updateProjectSrc} />
+      </div>
       
       <div class="tabs-container">
         <div class="tabs">
@@ -659,17 +662,13 @@
     border-bottom: 1px solid #222329;
     flex-shrink: 0;
   }
-  textarea {
+  .editor-container {
     width: 100%;
     flex: 1;
     min-height: 200px;
-    resize: none;
-    padding: 0.75rem;
-    border: 0;
-    outline: none;
+    overflow-x: hidden;
+    overflow-y: auto;
     background: #17181b;
-    color: #e7e7ea;
-    font-family: ui-monospace, Menlo, monospace;
   }
   .tabs-container {
     background: #0d0d0f;

@@ -18,6 +18,11 @@
     "vite": "^7.1.2"
   },
   "dependencies": {
-    "@terrastruct/d2": "^0.1.33"
+    "@codemirror/language": "^6.11.3",
+    "@codemirror/state": "^6.5.2",
+    "@codemirror/view": "^6.38.6",
+    "@lezer/highlight": "^1.2.2",
+    "@terrastruct/d2": "^0.1.33",
+    "codemirror": "^6.0.2"
   }
 }
